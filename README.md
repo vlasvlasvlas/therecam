@@ -2,20 +2,20 @@
 
 [![Webcam Theremin](https://user-images.githubusercontent.com/85010533/164991828-26b56f90-a01a-4da9-9cc2-0cf157ded159.gif)](URL "https://youtu.be/lhVT2A8Nzn8")
 
-A modular musical instrument played with hand gestures detected from a webcam feed. Uses OpenCV and MediaPipe in Python for hand detection &amp; tracking, and Pure Data for sound synthesis. [See a video demonstrating the instrument here](URL "https://youtu.be/lhVT2A8Nzn8")
+A modular musical instrument played with hand gestures detected from a webcam feed. Uses OpenCV and MediaPipe in Python for hand detection &amp; tracking, and Pure Data for sound synthesis. [See a video demonstrating the instrument here](https://youtu.be/lhVT2A8Nzn8)
 
 ## Requirements
-[Mediapipe](URL "https://google.github.io/mediapipe/getting_started/python.html")
+[Mediapipe](https://google.github.io/mediapipe/getting_started/python.html)
 ```
 pip install mediapipe==0.8.9.1
 ```
 
-[Open CV](URL "https://github.com/opencv/opencv/wiki")
+[Open CV](https://github.com/opencv/opencv/wiki)
 ```
 pip install opencv-python==4.5.5.64
 ```
 
-[Pure Data](URL "https://puredata.info/downloads/pure-data")
+[Pure Data](https://puredata.info/downloads/pure-data)
 
 ## Getting Started
 After opening one of the Pure Data patches in the Pd folder, run the Python script. This will start the webcam and you will then be able to use hand gestures to control synths in Pure Data. By default, all control is done with the the tip of the index finger of the detected hand.
