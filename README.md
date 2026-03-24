@@ -110,6 +110,7 @@ El HUD tiene fondo negro translúcido para asegurar contraste y legibilidad sobr
 
 `Vibrato Depth` puede quedar en `0.00` sin cortar el audio, y ahora tanto vibrato como delay arrancan en `OFF`.
 Cuando ambos efectos estan apagados, el panel superior muestra `VIB OFF | DLY OFF`.
+El rango maximo de delay ahora es mas amplio, con ecos mas separados y mas presentes cuando subis `Delay Mix`.
 
 ## Indicadores en pantalla
 
