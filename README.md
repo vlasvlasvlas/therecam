@@ -11,7 +11,9 @@ Theremin por webcam sin Pure Data, con control por manos y audio en tiempo real.
 - Antena virtual horizontal inferior izquierda para volumen
 - Zonas de control visibles en pantalla (`PITCH ZONE` y `VOLUME ZONE`)
 - `bbox` por mano con rol explicito (`PITCH`, `VOL`, `PITCH+VOL`)
-- Grilla de notas opcional (toggle)
+- Grilla de notas opcional (toggle), anclada visualmente en `C/DO`
+- Etiquetas del grid superiores mas grandes y con sombra negra para mejor lectura
+- Datos grandes dentro del `bbox` de cada mano
 - Snap-to-grid opcional (toggle)
 - Atajos de teclado en vivo
 - Lanzadores multiplataforma
@@ -62,6 +64,8 @@ python run_theremin.py
   - Mano izquierda: volumen con referencia en la antena horizontal (`VOL ANT`) dentro de `VOLUME ZONE`
 - 1 mano: la misma mano controla tono + volumen
 - Cada mano aparece con landmarks y un `bbox` con su rol, para que quede claro que mano esta manejando cada parametro
+- Dentro del `bbox` de la mano de tono se muestra la nota cercana y la frecuencia actual
+- Dentro del `bbox` de la mano de volumen se muestra el porcentaje de volumen
 - Cuanto mas cerca de `PITCH ANT`, mas agudo
 - Cuanto mas arriba dentro de `VOLUME ZONE`, mas volumen
 
@@ -106,11 +110,15 @@ El HUD tiene fondo negro translúcido para asegurar contraste y legibilidad sobr
 
 - `PITCH ZONE` y `VOLUME ZONE`
 - `bbox` de cada mano con su rol
+- Dentro del `bbox` de `PITCH`: nota cercana + frecuencia
+- Dentro del `bbox` de `VOL`: porcentaje de volumen
 - `PITCH ANT` (antena vertical de tono)
 - `VOL ANT` (antena horizontal inferior izquierda)
+- Grilla musical alineada por octavas de `C/DO`
 - `PITCH X` posicion de indice derecho
 - `VOL` barra de volumen
-- `Freq`, `Amp`, `Dist`, nota actual, modo snap y estado `SNAPPED/FREE`
+- Panel superior simplificado a 2 lineas cuando hay manos detectadas
+- `Amp`, `Dist`, modo snap y estado `SNAPPED/FREE`
 
 ## Archivos principales
 

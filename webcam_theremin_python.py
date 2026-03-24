@@ -52,6 +52,10 @@ CONTROL_PANEL_WIDTH = 620
 CONTROL_PANEL_LINE_HEIGHT = 24
 ZONE_ALPHA = 0.10
 HAND_BBOX_PAD = 18
+GRID_NOTE_SCALE = 0.52
+GRID_NOTE_THICKNESS = 2
+PITCH_METRIC_COLOR = (255, 110, 255)
+VOLUME_METRIC_COLOR = (255, 255, 0)
 
 
 class SynthState:
@@ -272,25 +276,26 @@ def draw_note_grid(image, width: int, height: int):
         x_off_norm = distance_norm_to_x_offset(d)
         x = int(antenna_x + (x_off_norm * width))
 
-        is_octave = (step % 12 == 0)
-        color = (255, 255, 255) if is_octave else (110, 110, 110)
-        thickness = 2 if is_octave else 1
+        midi_note = BASE_FREQ_MIDI + step
+        is_octave_anchor = ((midi_note % 12) == 0)
+        color = (255, 255, 255) if is_octave_anchor else (110, 110, 110)
+        thickness = 2 if is_octave_anchor else 1
 
         if x < 0 or x > width:
             continue
 
         cv2.line(image, (x, 0), (x, height), color, thickness)
 
-        if is_octave or (step % 2 == 0):
-            note_name = midi_to_note_name(BASE_FREQ_MIDI + step)
+        if is_octave_anchor or (step % 2 == 0):
+            note_name = midi_to_note_name(midi_note)
             draw_outlined_text(
                 image,
                 note_name,
-                (x + 3, min(height - 10, 18 + (step % 3) * 14)),
-                scale=0.35,
+                (x + 4, min(height - 10, 24 + (step % 3) * 18)),
+                scale=GRID_NOTE_SCALE,
                 color=(235, 235, 235),
-                thickness=1,
-                outline_thickness=2,
+                thickness=GRID_NOTE_THICKNESS,
+                outline_thickness=GRID_NOTE_THICKNESS + 2,
             )
 
 
@@ -383,6 +388,80 @@ def draw_hand_bbox(image, bbox: tuple[int, int, int, int], label: str, color):
     cv2.rectangle(image, (x1, tag_y), (tag_x2, tag_y + 24), (0, 0, 0), -1)
     cv2.rectangle(image, (x1, tag_y), (tag_x2, tag_y + 24), color, 1)
     draw_outlined_text(image, label, (x1 + 6, tag_y + 17), scale=0.52, color=color, thickness=2)
+
+
+def fit_metric_scale(lines: list[str], box_width: int, box_height: int) -> float:
+    if not lines:
+        return 0.8
+
+    candidate_scales = [1.6, 1.45, 1.3, 1.15, 1.0, 0.9, 0.8, 0.72]
+    usable_width = max(48, box_width - 20)
+    usable_height = max(48, box_height - 20)
+    line_gap = 8
+
+    for scale in candidate_scales:
+        widths = [text_size(line, scale=scale, thickness=3)[0] for line in lines]
+        heights = [text_size(line, scale=scale, thickness=3)[1] for line in lines]
+        total_height = sum(heights) + (line_gap * (len(lines) - 1))
+        if max(widths) <= usable_width and total_height <= usable_height:
+            return scale
+
+    return candidate_scales[-1]
+
+
+def draw_hand_metric(image, bbox: tuple[int, int, int, int], lines: list[str], color):
+    if not lines:
+        return
+
+    x1, y1, x2, y2 = bbox
+    box_width = x2 - x1
+    box_height = y2 - y1
+    scale = fit_metric_scale(lines, box_width, box_height)
+    thickness = 3
+    line_gap = 8
+
+    sizes = [text_size(line, scale=scale, thickness=thickness) for line in lines]
+    line_widths = [size[0] for size in sizes]
+    line_heights = [size[1] for size in sizes]
+    total_height = sum(line_heights) + (line_gap * (len(lines) - 1))
+    max_width = max(line_widths)
+
+    panel_pad_x = 10
+    panel_pad_y = 8
+    panel_x1 = max(x1 + 4, x2 - max_width - (panel_pad_x * 2) - 4)
+    panel_y1 = max(y1 + 4, y2 - total_height - (panel_pad_y * 2) - 4)
+    panel_x2 = min(x2 - 4, x2 - 4)
+    panel_y2 = min(y2 - 4, panel_y1 + total_height + (panel_pad_y * 2))
+
+    overlay = image.copy()
+    cv2.rectangle(overlay, (panel_x1, panel_y1), (panel_x2, panel_y2), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.74, image, 0.26, 0, image)
+    cv2.rectangle(image, (panel_x1, panel_y1), (panel_x2, panel_y2), color, 1)
+
+    current_y = panel_y2 - panel_pad_y - total_height + line_heights[0]
+    for idx, line in enumerate(lines):
+        line_width = line_widths[idx]
+        line_height = line_heights[idx]
+        line_x = panel_x2 - panel_pad_x - line_width
+        draw_outlined_text(
+            image,
+            line,
+            (line_x, current_y),
+            scale=scale,
+            color=color,
+            thickness=thickness,
+            outline_thickness=thickness + 3,
+        )
+        current_y += line_height + line_gap
+
+
+def pitch_metric_lines(freq: float) -> list[str]:
+    note_name = midi_to_note_name(int(round(frequency_to_midi(freq))))
+    return [note_name, f"{freq:.1f} Hz"]
+
+
+def volume_metric_text(volume_norm: float) -> str:
+    return f"{int(round(np.clip(volume_norm, 0.0, 1.0) * 100.0))}%"
 
 
 def resolve_hand_roles(hand_infos: list[dict]) -> tuple[int, int]:
@@ -613,12 +692,25 @@ def main() -> None:
 
                         draw_hand_bbox(image, hand_info["bbox"], role_label, box_color)
 
+                        metric_lines = []
+                        metric_color = PITCH_METRIC_COLOR if idx == pitch_idx else VOLUME_METRIC_COLOR
+                        if idx == pitch_idx:
+                            metric_lines.extend(pitch_metric_lines(target_freq))
+                        if idx == volume_idx:
+                            volume_text = volume_metric_text(volume_y)
+                            if idx == pitch_idx:
+                                metric_lines.append(f"VOL {volume_text}")
+                            else:
+                                metric_lines = [volume_text]
+                                metric_color = VOLUME_METRIC_COLOR
+
+                        draw_hand_metric(image, hand_info["bbox"], metric_lines, metric_color)
+
                         tip = detected_hand.landmark[8]
                         px = int(tip.x * width)
                         py = int(tip.y * height)
                         cv2.circle(image, (px, py), 8, box_color, 2)
 
-                    note_name = midi_to_note_name(int(round(frequency_to_midi(target_freq))))
                     snap_label = "SNAPPED" if snapped_now else "FREE"
                     if len(hand_infos) >= 2:
                         mode_text = "2-HAND: RIGHT hand = PITCH | LEFT hand = VOL"
@@ -626,7 +718,7 @@ def main() -> None:
                         single_hand = hand_infos[0]["handedness"].upper()
                         mode_text = f"1-HAND: {single_hand} hand drives PITCH + VOL"
 
-                    status_x, status_y, status_w, status_h = draw_hud_panel(image, 12, 10, 700, 128, alpha=0.80)
+                    status_x, status_y, status_w, _ = draw_hud_panel(image, 12, 10, 720, 94, alpha=0.80)
                     draw_outlined_text(
                         image,
                         mode_text,
@@ -637,23 +729,15 @@ def main() -> None:
                     )
                     draw_outlined_text(
                         image,
-                        f"Freq: {target_freq:7.1f} Hz | Amp: {target_amp:0.3f} | Dist: {pitch_distance_proc:0.2f}",
+                        f"Amp: {target_amp:0.3f} | Dist: {pitch_distance_proc:0.2f} | Snap: {snap_label} | {snap_mode.upper()}",
                         (status_x + 10, status_y + 52),
                         scale=0.58,
-                        color=(255, 255, 255),
-                        thickness=2,
-                    )
-                    draw_outlined_text(
-                        image,
-                        f"Note: {note_name} | Snap: {snap_label} | Mode: {snap_mode.upper()} | Offset: {semitone_offset_proc:0.2f} st",
-                        (status_x + 10, status_y + 80),
-                        scale=0.58,
-                        color=(120, 255, 120) if snapped_now else (220, 220, 220),
+                        color=(120, 255, 120) if snapped_now else (235, 235, 235),
                         thickness=2,
                     )
 
                     draw_pitch_line(image, width, height, pitch_x)
-                    draw_level_bar(image, status_x + status_w - 42, status_y + 34, 26, 78, volume_y, "VOL")
+                    draw_level_bar(image, status_x + status_w - 42, status_y + 24, 26, 58, volume_y, "VOL")
                 else:
                     with state.lock:
                         state.target_amp = 0.0
