@@ -16,6 +16,7 @@ Theremin por webcam sin Pure Data, con control por manos y audio en tiempo real.
 - Datos grandes dentro del `bbox` de cada mano
 - Snap-to-grid opcional (toggle)
 - Vibrato y delay arrancan apagados por defecto
+- Filtrado suave de tracking para evitar vibrato base por micro-jitter de la mano
 - Atajos de teclado en vivo
 - Lanzadores multiplataforma
 
@@ -108,6 +109,7 @@ En fullscreen se oculta el HUD largo y queda un aviso minimo para salir (`L` / `
 El HUD tiene fondo negro translúcido para asegurar contraste y legibilidad sobre cualquier imagen de cámara.
 
 `Vibrato Depth` puede quedar en `0.00` sin cortar el audio, y ahora tanto vibrato como delay arrancan en `OFF`.
+Cuando ambos efectos estan apagados, el panel superior muestra `VIB OFF | DLY OFF`.
 
 ## Indicadores en pantalla
 

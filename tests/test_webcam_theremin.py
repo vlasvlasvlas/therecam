@@ -117,5 +117,23 @@ class LayoutTests(unittest.TestCase):
         self.assertGreater(right_zone_sum, 0)
 
 
+class InputSmoothingTests(unittest.TestCase):
+    def test_deadband_holds_small_pitch_jitter(self):
+        previous = 0.50
+        current = 0.502
+        smoothed = app.smooth_axis_value(previous, current, app.PITCH_INPUT_SMOOTHING, app.PITCH_INPUT_DEADBAND)
+        self.assertEqual(smoothed, previous)
+
+    def test_smoothing_moves_when_change_is_intentional(self):
+        previous = 0.50
+        current = 0.56
+        smoothed = app.smooth_axis_value(previous, current, app.PITCH_INPUT_SMOOTHING, app.PITCH_INPUT_DEADBAND)
+        self.assertGreater(smoothed, previous)
+        self.assertLess(smoothed, current)
+
+    def test_effects_status_reports_dry_state(self):
+        self.assertEqual(app.effects_status_text(0.0, 0.0), "VIB OFF | DLY OFF")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -18,6 +18,10 @@ PITCH_DEADZONE = 0.02
 
 MAX_AMP = 0.22
 CTRL_SMOOTHING = 0.18
+PITCH_INPUT_SMOOTHING = 0.22
+VOLUME_INPUT_SMOOTHING = 0.28
+PITCH_INPUT_DEADBAND = 0.0035
+VOLUME_INPUT_DEADBAND = 0.0060
 DELAY_SECONDS = 0.25
 DELAY_FEEDBACK = 0.28
 DELAY_MIX = 0.0
@@ -312,6 +316,17 @@ def clamp(value: float, low: float, high: float) -> float:
     return float(np.clip(value, low, high))
 
 
+def smooth_axis_value(previous: Optional[float], current: float, smoothing: float, deadband: float) -> float:
+    current = float(current)
+    if previous is None:
+        return current
+
+    delta = current - previous
+    if abs(delta) <= deadband:
+        return float(previous)
+    return float(previous + (delta * smoothing))
+
+
 def osc_from_phase(phase: np.ndarray, waveform: str) -> np.ndarray:
     if waveform == "triangle":
         return (2.0 / np.pi) * np.arcsin(np.sin(phase))
@@ -464,6 +479,12 @@ def volume_metric_text(volume_norm: float) -> str:
     return f"{int(round(np.clip(volume_norm, 0.0, 1.0) * 100.0))}%"
 
 
+def effects_status_text(vibrato_depth: float, delay_mix: float) -> str:
+    vib_text = "VIB OFF" if vibrato_depth <= 0.0 else f"VIB {vibrato_depth:.2f} st"
+    delay_text = "DLY OFF" if delay_mix <= 0.0 else f"DLY {delay_mix:.2f}"
+    return f"{vib_text} | {delay_text}"
+
+
 def resolve_hand_roles(hand_infos: list[dict]) -> tuple[int, int]:
     if not hand_infos:
         raise ValueError("hand_infos no puede estar vacio")
@@ -535,6 +556,9 @@ def main() -> None:
     fullscreen = False
     snap_buffer = SNAP_BUFFER_SEMITONES_DEFAULT
     snap_mode = "chromatic"
+    smoothed_pitch_x = None
+    smoothed_volume_hand_y = None
+    last_detected_hands = 0
 
     def audio_callback(outdata, frames, _time, status):
         if status:
@@ -675,8 +699,29 @@ def main() -> None:
                     volume_hand = hand_infos[volume_idx]
                     pitch_hand = hand_infos[pitch_idx]
 
-                    pitch_x = pitch_hand["x"]
-                    volume_y = volume_from_left_hand_y(volume_hand["y"])
+                    raw_pitch_x = pitch_hand["x"]
+                    raw_volume_hand_y = volume_hand["y"]
+
+                    if len(hand_infos) != last_detected_hands:
+                        smoothed_pitch_x = raw_pitch_x
+                        smoothed_volume_hand_y = raw_volume_hand_y
+
+                    smoothed_pitch_x = smooth_axis_value(
+                        smoothed_pitch_x,
+                        raw_pitch_x,
+                        PITCH_INPUT_SMOOTHING,
+                        PITCH_INPUT_DEADBAND,
+                    )
+                    smoothed_volume_hand_y = smooth_axis_value(
+                        smoothed_volume_hand_y,
+                        raw_volume_hand_y,
+                        VOLUME_INPUT_SMOOTHING,
+                        VOLUME_INPUT_DEADBAND,
+                    )
+                    last_detected_hands = len(hand_infos)
+
+                    pitch_x = smoothed_pitch_x
+                    volume_y = volume_from_left_hand_y(smoothed_volume_hand_y)
                     pitch_distance = distance_from_pitch_antenna(pitch_x)
                     pitch_distance_proc, semitone_offset_proc, snapped_now = apply_snap_to_grid_advanced(
                         pitch_distance,
@@ -691,6 +736,8 @@ def main() -> None:
                     with state.lock:
                         state.target_freq = target_freq
                         state.target_amp = target_amp
+                        vib_depth_ui = state.vibrato_depth
+                        delay_mix_status_ui = state.delay_mix
 
                     for idx, hand_info in enumerate(hand_infos):
                         detected_hand = hand_info["landmarks"]
@@ -752,7 +799,7 @@ def main() -> None:
                     )
                     draw_outlined_text(
                         image,
-                        f"Amp: {target_amp:0.3f} | Dist: {pitch_distance_proc:0.2f} | Snap: {snap_label} | {snap_mode.upper()}",
+                        f"Amp: {target_amp:0.3f} | Dist: {pitch_distance_proc:0.2f} | {effects_status_text(vib_depth_ui, delay_mix_status_ui)}",
                         (status_x + 10, status_y + 52),
                         scale=0.58,
                         color=(120, 255, 120) if snapped_now else (235, 235, 235),
@@ -762,6 +809,9 @@ def main() -> None:
                     draw_pitch_line(image, width, height, pitch_x)
                     draw_level_bar(image, status_x + status_w - 42, status_y + 24, 26, 58, volume_y, "VOL")
                 else:
+                    smoothed_pitch_x = None
+                    smoothed_volume_hand_y = None
+                    last_detected_hands = 0
                     with state.lock:
                         state.target_amp = 0.0
 
@@ -783,11 +833,12 @@ def main() -> None:
 
                 if not fullscreen:
                     vibrato_depth_text = "OFF" if vib_depth <= 0.0 else f"{vib_depth:.2f} st"
+                    vibrato_rate_text = "--" if vib_depth <= 0.0 else f"{vib_rate:.1f} Hz"
                     delay_mix_text = "OFF" if delay_mix_ui <= 0.0 else f"{delay_mix_ui:.2f}"
                     control_lines = [
                         f"SONIDO: {waveform_ui.upper()} [Z ciclo | U/I/O/P directo]",
                         f"Vibrato Depth: {vibrato_depth_text} [R/F | J off]",
-                        f"Vibrato Rate:  {vib_rate:.1f} Hz [T/G]",
+                        f"Vibrato Rate:  {vibrato_rate_text} [T/G]",
                         f"Delay Mix:     {delay_mix_text} [Y/H | D off]",
                         f"Grid [M]: {'ON' if show_note_grid else 'OFF'} | Snap [N]: {'ON' if snap_to_grid else 'OFF'}",
                         f"Snap Buffer: {snap_buffer:.2f} st [B/V] | Mode [K]: {snap_mode.upper()}",
