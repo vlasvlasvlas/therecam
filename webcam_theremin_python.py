@@ -20,9 +20,9 @@ MAX_AMP = 0.22
 CTRL_SMOOTHING = 0.18
 DELAY_SECONDS = 0.25
 DELAY_FEEDBACK = 0.28
-DELAY_MIX = 0.18
+DELAY_MIX = 0.0
 
-VIBRATO_DEPTH_DEFAULT = 0.20
+VIBRATO_DEPTH_DEFAULT = 0.0
 VIBRATO_DEPTH_MIN = 0.0
 VIBRATO_DEPTH_MAX = 2.5
 VIBRATO_DEPTH_STEP = 0.08
@@ -502,6 +502,29 @@ def waveform_from_key(key: int, current_waveform: str) -> Optional[str]:
     return None
 
 
+def apply_sound_shortcut(state: SynthState, key: int) -> None:
+    if key in (ord("r"), ord("R")):
+        state.vibrato_depth = clamp(state.vibrato_depth + VIBRATO_DEPTH_STEP, VIBRATO_DEPTH_MIN, VIBRATO_DEPTH_MAX)
+    elif key in (ord("f"), ord("F")):
+        state.vibrato_depth = clamp(state.vibrato_depth - VIBRATO_DEPTH_STEP, VIBRATO_DEPTH_MIN, VIBRATO_DEPTH_MAX)
+    elif key in (ord("j"), ord("J")):
+        state.vibrato_depth = 0.0
+    elif key in (ord("h"), ord("H")):
+        state.delay_mix = clamp(state.delay_mix - DELAY_MIX_STEP, DELAY_MIX_MIN, DELAY_MIX_MAX)
+    elif key in (ord("y"), ord("Y")):
+        state.delay_mix = clamp(state.delay_mix + DELAY_MIX_STEP, DELAY_MIX_MIN, DELAY_MIX_MAX)
+    elif key in (ord("d"), ord("D")):
+        state.delay_mix = 0.0
+    elif key in (ord("g"), ord("G")):
+        state.vibrato_rate = clamp(state.vibrato_rate - VIBRATO_RATE_STEP, VIBRATO_RATE_MIN, VIBRATO_RATE_MAX)
+    elif key in (ord("t"), ord("T")):
+        state.vibrato_rate = clamp(state.vibrato_rate + VIBRATO_RATE_STEP, VIBRATO_RATE_MIN, VIBRATO_RATE_MAX)
+
+    next_waveform = waveform_from_key(key, state.waveform)
+    if next_waveform is not None:
+        state.waveform = next_waveform
+
+
 def main() -> None:
     import mediapipe as mp
     import sounddevice as sd
@@ -597,7 +620,7 @@ def main() -> None:
     print("Modo Python-only iniciado.")
     print("2 manos: derecha=tono (cerca de antena vertical = mas agudo), izquierda=volumen.")
     print("1 mano: controla tono+volumen.")
-    print("Teclas (solo letras): R/F vibrato depth, T/G vibrato rate, Y/H delay mix.")
+    print("Teclas (solo letras): R/F vibrato depth, J vibrato off, T/G vibrato rate, Y/H delay mix, D delay off.")
     print("Sonido: Z ciclo waveform, U sine, I triangle, O square, P saw. Grid: M toggle, snap N toggle, B/V snap buffer.")
     print("Modo snap: K chromatic/diatonic. Pantalla: L fullscreen. Salir: Q.")
     print("Salir: presiona q en la ventana de webcam.")
@@ -759,11 +782,13 @@ def main() -> None:
                     waveform_ui = state.waveform
 
                 if not fullscreen:
+                    vibrato_depth_text = "OFF" if vib_depth <= 0.0 else f"{vib_depth:.2f} st"
+                    delay_mix_text = "OFF" if delay_mix_ui <= 0.0 else f"{delay_mix_ui:.2f}"
                     control_lines = [
                         f"SONIDO: {waveform_ui.upper()} [Z ciclo | U/I/O/P directo]",
-                        f"Vibrato Depth: {vib_depth:.2f} st [R/F]",
+                        f"Vibrato Depth: {vibrato_depth_text} [R/F | J off]",
                         f"Vibrato Rate:  {vib_rate:.1f} Hz [T/G]",
-                        f"Delay Mix:     {delay_mix_ui:.2f} [Y/H]",
+                        f"Delay Mix:     {delay_mix_text} [Y/H | D off]",
                         f"Grid [M]: {'ON' if show_note_grid else 'OFF'} | Snap [N]: {'ON' if snap_to_grid else 'OFF'}",
                         f"Snap Buffer: {snap_buffer:.2f} st [B/V] | Mode [K]: {snap_mode.upper()}",
                         "Fullscreen [L] | Exit [Q]",
@@ -798,22 +823,7 @@ def main() -> None:
                     break
 
                 with state.lock:
-                    if key in (ord("r"), ord("R")):
-                        state.vibrato_depth = clamp(state.vibrato_depth + VIBRATO_DEPTH_STEP, VIBRATO_DEPTH_MIN, VIBRATO_DEPTH_MAX)
-                    elif key in (ord("f"), ord("F")):
-                        state.vibrato_depth = clamp(state.vibrato_depth - VIBRATO_DEPTH_STEP, VIBRATO_DEPTH_MIN, VIBRATO_DEPTH_MAX)
-                    elif key in (ord("h"), ord("H")):
-                        state.delay_mix = clamp(state.delay_mix - DELAY_MIX_STEP, DELAY_MIX_MIN, DELAY_MIX_MAX)
-                    elif key in (ord("y"), ord("Y")):
-                        state.delay_mix = clamp(state.delay_mix + DELAY_MIX_STEP, DELAY_MIX_MIN, DELAY_MIX_MAX)
-                    elif key in (ord("g"), ord("G")):
-                        state.vibrato_rate = clamp(state.vibrato_rate - VIBRATO_RATE_STEP, VIBRATO_RATE_MIN, VIBRATO_RATE_MAX)
-                    elif key in (ord("t"), ord("T")):
-                        state.vibrato_rate = clamp(state.vibrato_rate + VIBRATO_RATE_STEP, VIBRATO_RATE_MIN, VIBRATO_RATE_MAX)
-
-                    next_waveform = waveform_from_key(key, state.waveform)
-                    if next_waveform is not None:
-                        state.waveform = next_waveform
+                    apply_sound_shortcut(state, key)
 
                 if key in (ord("m"), ord("M")):
                     show_note_grid = not show_note_grid

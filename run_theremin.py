@@ -90,7 +90,7 @@ def run_app(python_bin):
     print("- 2 manos: derecha=tono (cerca antena vertical derecha = mas agudo)")
     print("           izquierda=volumen (cerca antena horizontal inferior izquierda = volumen 0)")
     print("- 1 mano: controla tono + volumen")
-    print("- Sonido: R/F vibrato depth, T/G vibrato rate, Y/H delay mix")
+    print("- Sonido: R/F vibrato depth, J vibrato off, T/G vibrato rate, Y/H delay mix, D delay off")
     print("- Waveforms: Z ciclo, U sine, I triangle, O square, P saw")
     print("- Visual: M grid, N snap, B/V snap buffer, K modo snap, L fullscreen")
     print("- Salir: tecla q en la ventana")

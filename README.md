@@ -15,6 +15,7 @@ Theremin por webcam sin Pure Data, con control por manos y audio en tiempo real.
 - Etiquetas del grid superiores mas grandes y con sombra negra para mejor lectura
 - Datos grandes dentro del `bbox` de cada mano
 - Snap-to-grid opcional (toggle)
+- Vibrato y delay arrancan apagados por defecto
 - Atajos de teclado en vivo
 - Lanzadores multiplataforma
 
@@ -75,10 +76,12 @@ python run_theremin.py
 
 - `R`: + vibrato depth
 - `F`: - vibrato depth
+- `J`: apagar vibrato
 - `T`: + vibrato rate
 - `G`: - vibrato rate
 - `Y`: + delay mix
 - `H`: - delay mix
+- `D`: apagar delay
 - `Z`: siguiente waveform
 - `U`: `sine`
 - `I`: `triangle`
@@ -104,7 +107,7 @@ En fullscreen se oculta el HUD largo y queda un aviso minimo para salir (`L` / `
 
 El HUD tiene fondo negro translúcido para asegurar contraste y legibilidad sobre cualquier imagen de cámara.
 
-`Vibrato Depth` puede bajarse hasta `0.00` con `F` sin cortar el audio.
+`Vibrato Depth` puede quedar en `0.00` sin cortar el audio, y ahora tanto vibrato como delay arrancan en `OFF`.
 
 ## Indicadores en pantalla
 

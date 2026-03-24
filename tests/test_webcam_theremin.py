@@ -43,6 +43,33 @@ class WaveformKeyTests(unittest.TestCase):
         self.assertIsNone(app.waveform_from_key(ord("x"), "sine"))
 
 
+class SoundShortcutTests(unittest.TestCase):
+    def test_synth_defaults_start_dry(self):
+        state = app.SynthState()
+        self.assertEqual(state.vibrato_depth, 0.0)
+        self.assertEqual(state.delay_mix, 0.0)
+
+    def test_direct_off_shortcuts_disable_vibrato_and_delay(self):
+        state = app.SynthState()
+        state.vibrato_depth = 0.64
+        state.delay_mix = 0.31
+
+        app.apply_sound_shortcut(state, ord("j"))
+        app.apply_sound_shortcut(state, ord("d"))
+
+        self.assertEqual(state.vibrato_depth, 0.0)
+        self.assertEqual(state.delay_mix, 0.0)
+
+    def test_increment_shortcuts_can_add_vibrato_and_delay_from_zero(self):
+        state = app.SynthState()
+
+        app.apply_sound_shortcut(state, ord("r"))
+        app.apply_sound_shortcut(state, ord("y"))
+
+        self.assertGreater(state.vibrato_depth, 0.0)
+        self.assertGreater(state.delay_mix, 0.0)
+
+
 class VibratoTests(unittest.TestCase):
     def test_zero_depth_vibrato_keeps_full_buffer_length(self):
         frames = 16
