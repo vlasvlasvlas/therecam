@@ -150,3 +150,6 @@ sounddevice
 ```bash
 PYTHONPYCACHEPREFIX=/tmp/codex-pyc venv/bin/python -m unittest discover -s tests -v
 ```
+## License
+
+MIT License — © 2026 [Vladimiro Bellini](https://github.com/vlasvlasvlas). Free to use and modify, attribution required.
